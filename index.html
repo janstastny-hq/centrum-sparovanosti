@@ -1,0 +1,1065 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Centrum spárovanosti | Heureka.cz</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  :root {
+    --primary-blue: #0072ce;
+    --primary-blue-darker: #005ea2;
+    --text-dark: #212529;
+    --text-secondary: #6c757d;
+    --border-color: #dee2e6;
+    --background-page: #f8f9fa;
+    --background-card: #ffffff;
+    --success-color: #28a745;
+    --success-soft: #e7f7ee;
+    --danger-color: #dc3545;
+    --danger-soft: #fdeceb;
+    --warning-color: #fd7e14;
+    --warning-soft: #fff3e8;
+    --neutral-soft: #eceef1;
+    --status-lightgreen: #73b864;
+    --color-paired: var(--status-lightgreen);
+    --color-requires-action: var(--danger-color);
+    --color-pending: var(--warning-color);
+    --font-family-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    /* Jedna škála zaoblení pro celou stránku: xs = drobné prvky/vstupy, md = karty a řádky, lg = hero, pill = navigace/filtry. */
+    --radius-xs: 8px;
+    --radius-sm: 10px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-pill: 999px;
+    --box-shadow-subtle: 0 .125rem .25rem rgba(0,0,0,.06);
+  }
+  * { box-sizing: border-box; }
+  body { font-family: var(--font-family-sans-serif); margin: 0; background: var(--background-page); color: var(--text-dark); line-height: 1.5; font-size: 14px; -webkit-font-smoothing: antialiased; }
+  .page { max-width: 1180px; margin: 0 auto; padding: 28px 24px 80px; }
+  a { color: var(--primary-blue); }
+  button, input, select { font-family: inherit; }
+  :focus-visible { outline: 2px solid var(--primary-blue); outline-offset: 2px; }
+
+  /* ============ HERO ============ */
+  .hub-hero {
+    position: relative; overflow: hidden;
+    background: linear-gradient(135deg, #eaf4ff 0%, #f7fbff 55%, #f8f9fa 100%);
+    border: 1px solid #dbe9f8; border-radius: var(--radius-lg); padding: 26px 28px 24px; margin-bottom: 22px;
+  }
+  .hub-hero::after {
+    content: ""; position: absolute; top: -60px; right: -60px; width: 220px; height: 220px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,114,206,.08), transparent 70%); pointer-events: none;
+  }
+  .hub-hero-top { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 18px; position: relative; z-index: 1; }
+  .page-header { font-size: 26px; font-weight: 700; margin: 0 0 6px; letter-spacing: -.01em; }
+  .page-lede { color: var(--text-secondary); max-width: 620px; margin: 0; font-size: 14px; }
+
+  .hero-ring { position: relative; width: 180px; height: 180px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; justify-self: center; transition: background .6s ease; }
+  .hero-ring::before { content: ""; position: absolute; inset: 16px; background: var(--background-card); border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.04); }
+  .hero-ring span { position: relative; z-index: 1; font-weight: 800; font-size: 36px; }
+
+  /* ---- Jediná navigace = zároveň statistiky (žádná duplicita) ---- */
+  .tab-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; position: relative; z-index: 1; }
+  .tab-btn {
+    padding: 11px 20px; border-radius: var(--radius-pill); border: 1px solid var(--border-color); background-color: var(--background-card);
+    color: var(--text-dark); font-weight: 500; font-size: 14.5px; cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 9px; transition: all .15s ease;
+  }
+  .tab-btn .tab-count { background-color: var(--background-page); border-radius: var(--radius-pill); padding: 1px 9px; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
+  .tab-btn:hover:not(.active) { border-color: var(--primary-blue); color: var(--primary-blue); }
+  .tab-btn:active { transform: scale(.97); }
+  .tab-btn.active { color: white; border-color: transparent; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+  .tab-btn.active .tab-count { background-color: rgba(255,255,255,.28); color: white; }
+  .tab-btn[data-tab="parovane"].active { background-color: var(--color-paired); }
+  .tab-btn[data-tab="nesparovane"].active { background-color: var(--color-requires-action); }
+  .tab-btn[data-tab="cekajici"].active { background-color: var(--color-pending); }
+  .tab-total-pill { padding: 11px 20px; border-radius: var(--radius-pill); border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); font-size: 14.5px; display: inline-flex; align-items: center; gap: 7px; }
+  .tab-total-pill b { color: var(--text-dark); }
+
+  /* ============ TOOLBAR (filtr + hledání + CSV) ============ */
+  .toolbar-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin: 20px 0 14px; }
+  .filter-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .category-select {
+    border: 1px solid var(--border-color); background: var(--background-card); color: var(--text-dark);
+    border-radius: var(--radius-sm); padding: 9px 32px 9px 14px; font-size: 13.5px; font-family: inherit; cursor: pointer;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236c757d' stroke-width='1.5' fill='none' fill-rule='evenodd'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+    transition: border-color .15s ease;
+  }
+  .category-select:focus { outline: none; border-color: var(--primary-blue); }
+  .search-input-wrap { position: relative; display: flex; align-items: center; }
+  .search-input-wrap i { position: absolute; left: 13px; color: var(--text-secondary); font-size: 13px; }
+  .search-input-wrap input {
+    border: 1px solid var(--border-color); background: var(--background-card); border-radius: var(--radius-sm);
+    padding: 9px 14px 9px 34px; font-size: 13.5px; font-family: inherit; width: 260px; transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .search-input-wrap input:focus { outline: none; border-color: var(--primary-blue); box-shadow: 0 0 0 .2rem rgba(0,114,206,.15); }
+  .csv-download-btn {
+    background-color: var(--primary-blue); color: white; border: none; cursor: pointer; font-size: 13.5px;
+    padding: 9px 16px; border-radius: var(--radius-sm); transition: background-color 0.2s ease, transform 0.1s ease-in-out;
+    flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; box-shadow: var(--box-shadow-subtle); font-family: inherit;
+  }
+  .csv-download-btn:hover { background-color: var(--primary-blue-darker); transform: translateY(-1px); }
+  .csv-download-btn:active { transform: translateY(0); }
+
+  /* ---- Filtr podle typu problému (jen v Nespárováno) ---- */
+  .problem-filter-bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+  .problem-filter-btn {
+    border: 1px solid var(--border-color); background: var(--background-card); color: var(--text-secondary);
+    border-radius: var(--radius-pill); padding: 7px 14px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 7px; transition: all .15s ease;
+  }
+  .problem-filter-btn:hover:not(.active) { border-color: #b9c1c9; }
+  .problem-filter-btn:active { transform: scale(.97); }
+  .problem-filter-btn.active { border-color: var(--primary-blue); background: #eaf2fb; color: var(--primary-blue); font-weight: 700; }
+  .problem-filter-btn .count { font-size: 11.5px; font-weight: 700; }
+
+  .section-heading { font-size: 15.5px; font-weight: 600; color: var(--text-dark); margin: 0 0 14px; }
+  .section-heading .count-note { color: var(--text-secondary); font-weight: 400; margin-left: 4px; }
+
+  .list-row {
+    display: flex; align-items: center; gap: 16px; background: var(--background-card); border: 1px solid var(--border-color);
+    border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 10px; transition: border-color .15s ease;
+  }
+  .list-row:hover { border-color: #c7ccd1; }
+  .list-row .row-thumb {
+    width: 44px; height: 44px; border-radius: var(--radius-xs); background: linear-gradient(135deg,#eef1f5,#e2e6eb);
+    display: flex; align-items: center; justify-content: center; font-size: 17px; color: #9aa4b2; flex-shrink: 0;
+  }
+  .list-row .row-main { flex: 1 1 auto; min-width: 0; }
+  .list-row .row-name { font-weight: 700; font-size: 14.5px; color: var(--text-dark); margin-bottom: 3px; }
+  .list-row .row-name a { color: inherit; text-decoration: none; }
+  .list-row .row-name a:hover { text-decoration: underline; }
+  .list-row .row-meta { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ---- Spárováno: vlevo nabídka, vpravo produktová karta ---- */
+  .row-split { flex: 1 1 auto; display: flex; align-items: center; gap: 16px; min-width: 0; }
+  .row-split .row-col { flex: 1 1 0; min-width: 0; }
+  .row-split .row-arrow-mini { flex: 0 0 auto; color: #c7ccd1; font-size: 15px; }
+  .row-col-label { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); font-weight: 700; margin-bottom: 3px; }
+  .row-matched-name { font-weight: 700; font-size: 14.5px; color: var(--text-dark); }
+  .row-matched-name a { color: var(--primary-blue); text-decoration: none; }
+  .row-matched-name a:hover { text-decoration: underline; }
+  @media (max-width: 720px) {
+    .row-split { flex-direction: column; align-items: stretch; gap: 8px; }
+    .row-split .row-arrow-mini { display: none; }
+  }
+  .subsection-heading { font-size: 13.5px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .03em; margin: 22px 0 12px; }
+  .subsection-heading:first-child { margin-top: 0; }
+  .subsection-heading .count-note { text-transform: none; font-weight: 400; letter-spacing: normal; margin-left: 4px; }
+  .list-row .row-price { font-weight: 700; font-size: 14.5px; flex: 0 0 90px; text-align: right; }
+  .list-row .row-badge { flex: 0 0 auto; font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-xs); white-space: nowrap; }
+  .row-badge.matched { background: var(--success-soft); color: #12805c; }
+  .list-row .row-action { flex: 0 0 auto; }
+  .empty-list { text-align: center; padding: 50px 20px; color: var(--text-secondary); background: var(--background-card); border: 1px dashed var(--border-color); border-radius: var(--radius-md); }
+
+  .wait-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 4px 9px; border-radius: var(--radius-xs); white-space: nowrap; flex: 0 0 auto; }
+  .wait-badge.admin { background-color: #fff3cd; color: #7a5b00; }
+  .wait-badge.category { background-color: #e7f7fc; color: #0b6478; }
+  .wait-badge.own { background-color: var(--neutral-soft); color: var(--text-dark); }
+
+  .toast { background: var(--success-soft); border: 1px solid #b7e4cf; color: #12805c; padding: 10px 16px; border-radius: var(--radius-sm); font-size: 13.5px; font-weight: 500; margin-bottom: 18px; display: none; }
+  .toast.show { display: block; }
+
+  /* ============ KARTY NABÍDEK (Nespárováno) ============ */
+  .match-row { display: flex; align-items: stretch; gap: 18px; margin-top: 0; margin-bottom: 22px; scroll-margin-top: 20px; }
+  .match-row.pinned-highlight { animation: pinPulse 1.6s ease; }
+  @keyframes pinPulse { 0% { box-shadow: 0 0 0 0 rgba(0,114,206,.35); border-radius: 14px; } 100% { box-shadow: 0 0 0 14px rgba(0,114,206,0); border-radius: 14px; } }
+  @media (max-width: 900px) { .match-row { flex-direction: column; } }
+
+  .offer-card {
+    flex: 1 1 360px; max-width: 400px; background: var(--background-card); border: 1px solid var(--border-color);
+    border-radius: var(--radius-md); padding: 20px; display: flex; flex-direction: column; transition: border-color .15s ease;
+  }
+  .offer-thumb {
+    width: 84px; height: 84px; border-radius: var(--radius-xs); background: linear-gradient(135deg,#eef1f5,#e2e6eb);
+    display: flex; align-items: center; justify-content: center; font-size: 30px; color: #9aa4b2; margin-bottom: 14px;
+  }
+  .offer-name { font-weight: 700; font-size: 16px; color: var(--text-dark); text-decoration: underline; text-decoration-color: #c7ccd1; margin: 0 0 10px; line-height: 1.35; }
+  .offer-meta { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 6px; }
+  .offer-price { font-weight: 700; font-size: 18px; margin-top: auto; padding-top: 10px; }
+
+  .arrow-col { flex: 0 0 46px; display: flex; align-items: center; justify-content: center; color: #c7ccd1; font-size: 20px; }
+  @media (max-width: 900px) { .arrow-col { transform: rotate(90deg); margin: -6px auto; } }
+
+  .status-box {
+    flex: 1 1 420px; border: 2px dashed #d7dbe0; border-radius: var(--radius-md); background: #fafbfc;
+    padding: 26px 26px; display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; gap: 6px;
+  }
+  .status-box.is-matched { border-style: solid; border-color: #b7e4cf; background: var(--success-soft); text-align: left; align-items: flex-start; justify-content: flex-start; }
+  .status-box .empty-text { color: var(--text-secondary); font-size: 14px; max-width: 320px; }
+
+  .matched-head { display: flex; align-items: center; gap: 10px; font-weight: 700; color: #12805c; font-size: 14.5px; margin-bottom: 10px; }
+  .matched-name { font-weight: 700; font-size: 15.5px; color: var(--text-dark); margin-bottom: 4px; }
+  .matched-cat { font-size: 12.5px; color: var(--text-secondary); }
+
+  .name-editor { width: 100%; margin-top: 16px; text-align: left; border-top: 1px dashed #d7dbe0; padding-top: 16px; }
+  .name-editor label { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-dark); margin-bottom: 8px; }
+  .name-editor input {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-xs); font-size: 14px;
+    font-family: inherit; margin-bottom: 10px; transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .name-editor input:focus { outline: none; border-color: var(--primary-blue); box-shadow: 0 0 0 .2rem rgba(0,114,206,.2); }
+  .rule-hint { font-size: 11.5px; color: var(--text-secondary); display: block; margin-top: 5px; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: var(--radius-xs); border: 1px solid transparent; }
+  .chip.ok { background: var(--success-soft); color: #12805c; border-color: #b7e4cf; }
+  .chip.missing { background: var(--danger-soft); color: var(--danger-color); border-color: #f5c6c1; }
+  .chip.manual { background: #eaf2fb; color: var(--primary-blue); border-color: #cfe2f6; }
+  .all-good { font-size: 13px; color: #12805c; font-weight: 600; display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+
+  .cat-missing-inline { color: var(--danger-color); font-style: italic; }
+  .category-picker { width: 100%; text-align: left; }
+  .cat-invalid-note { font-size: 12.5px; color: var(--danger-color); background: var(--danger-soft); border: 1px solid #f5c6c1; border-radius: var(--radius-xs); padding: 7px 10px; margin-bottom: 10px; }
+  .category-picker label { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-dark); margin-bottom: 8px; }
+  .category-picker input {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-xs); font-size: 14px;
+    font-family: inherit; margin-bottom: 4px; transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .category-picker input:focus { outline: none; border-color: var(--primary-blue); box-shadow: 0 0 0 .2rem rgba(0,114,206,.2); }
+  .category-results { max-height: 220px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-xs); margin-top: 8px; background: #fff; }
+  .category-results .cat-option { display: flex; flex-direction: column; padding: 9px 12px; cursor: pointer; border-bottom: 1px solid #f0f1f3; }
+  .category-results .cat-option:last-child { border-bottom: none; }
+  .category-results .cat-option:hover { background: #eaf2fb; }
+  .category-results .cat-option .cat-leaf { font-weight: 600; font-size: 13.5px; color: var(--text-dark); }
+  .category-results .cat-option .cat-parent { font-size: 11.5px; color: var(--text-secondary); }
+  .category-results .cat-empty { padding: 12px; font-size: 13px; color: var(--text-secondary); text-align: center; }
+
+  .params-editor { width: 100%; text-align: left; }
+  .params-editor label { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-dark); margin-bottom: 10px; }
+  .param-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .param-row .param-label { flex: 0 0 130px; font-size: 13px; color: var(--text-dark); font-weight: 600; }
+  .param-row input { flex: 1 1 auto; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: var(--radius-xs); font-size: 13.5px; font-family: inherit; transition: border-color .15s ease, box-shadow .15s ease; }
+  .param-row input:focus { outline: none; border-color: var(--primary-blue); box-shadow: 0 0 0 .2rem rgba(0,114,206,.2); }
+  .param-row.filled input { border-color: #b7e4cf; background: var(--success-soft); }
+  .param-row .param-check { flex: 0 0 16px; color: var(--success-color); opacity: 0; }
+  .param-row.filled .param-check { opacity: 1; }
+
+  .actions-col { flex: 0 0 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+  @media (max-width: 900px) { .actions-col { flex-direction: row; } }
+  .btn-primary { background: var(--primary-blue); color: #fff; border: none; padding: 11px 22px; border-radius: var(--radius-xs); font-size: 14.5px; font-weight: 600; cursor: pointer; width: 100%; transition: background .15s ease, transform .1s ease; font-family: inherit; }
+  .btn-primary:hover { background: var(--primary-blue-darker); }
+  .btn-primary:active { transform: translateY(1px); }
+  .btn-link { background: none; border: none; color: var(--text-secondary); font-size: 13.5px; text-decoration: underline; cursor: pointer; font-family: inherit; }
+  .btn-link:hover { color: var(--text-dark); }
+  .btn-secondary-link { background: none; border: none; color: var(--primary-blue); font-size: 13px; text-decoration: underline; cursor: pointer; font-family: inherit; padding: 0; margin-top: 4px; }
+
+  .done-panel { text-align: center; padding: 60px 20px; background: var(--background-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+  .done-panel i { font-size: 40px; color: var(--success-color); margin-bottom: 14px; }
+  .done-panel h2 { margin: 0 0 8px; font-size: 20px; }
+  .done-panel p { color: var(--text-secondary); margin: 0 0 20px; }
+  .sock-icon { width: 56px; height: 56px; }
+
+  [hidden] { display: none !important; }
+
+  @media (max-width: 480px) {
+    .hub-hero-top { grid-template-columns: 1fr; }
+    .hero-ring { width: 108px; height: 108px; }
+    .hero-ring span { font-size: 22px; }
+    .toolbar-row { flex-direction: column; align-items: stretch; }
+    .filter-group { width: 100%; flex-direction: column; align-items: stretch; }
+    .category-select, .search-input-wrap input { width: 100%; }
+    .csv-download-btn { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="hub-hero">
+    <div class="hub-hero-top">
+      <div>
+        <h1 class="page-header">Centrum spárovanosti</h1>
+        <p class="page-lede">Nabídky rovnou vidíte pod sebou a upravujete na místě — bez tabulek a bez přepínání mezi nástroji.</p>
+      </div>
+      <div class="hero-ring" id="heroRing"><span id="heroRingText">0%</span></div>
+    </div>
+    <div class="tab-bar" id="tabBar"></div>
+  </header>
+
+  <div class="toolbar-row">
+    <div class="filter-group">
+      <select id="categorySelect" class="category-select"></select>
+      <div class="search-input-wrap">
+        <i class="fas fa-magnifying-glass"></i>
+        <input type="search" id="offerSearch" placeholder="Hledat podle názvu nebo EAN…" autocomplete="off">
+      </div>
+    </div>
+    <button type="button" class="csv-download-btn" id="csvBtn"><i class="fas fa-file-csv"></i> Stáhnout CSV</button>
+  </div>
+
+  <div class="problem-filter-bar" id="problemFilterBar"></div>
+  <div class="toast" id="toast"></div>
+
+  <section id="content"></section>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+
+  /* ============ SDÍLENÁ LOGIKA VALIDÁTORU NÁZVU / KATEGORIÍ / PARAMETRŮ ============ */
+  let RULES = {}, PARAMS = {}, CATEGORIES = [];
+  try {
+    const proto = await (await fetch('./proto-data.json')).json();
+    RULES = proto.rules || {}; PARAMS = proto.params || {}; CATEGORIES = proto.categories || [];
+  } catch (e) { console.error('proto-data.json se nepodařilo načíst', e); }
+
+  const fold = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+  const CATEGORY_OPTIONS = CATEGORIES.map(full => {
+    const parts = full.split('|').map(s => s.trim());
+    const leaf = parts[parts.length - 1];
+    return { full, leaf, parent: parts.slice(-3, -1).join(' | '), foldedLeaf: fold(leaf) };
+  });
+  const VALID_CATEGORY_SET = new Set(CATEGORIES.map(c => c.trim()));
+  const isValidCategory = text => VALID_CATEGORY_SET.has((text || '').trim());
+
+  function dejZakladSlova(slovo) {
+    slovo = fold(slovo);
+    if (slovo.length <= 3) return slovo;
+    const konc = ['ova','ove','ovy','ovou','oveho','ovemu','ovych','ovym','ovymi','ami','em','ech','ich','um','ou','am','y','e','a','i','o','u'];
+    for (const k of konc) { if (slovo.endsWith(k)) { const r = slovo.slice(0, -k.length); if (r.length >= 3) return r; break; } }
+    return slovo;
+  }
+  function najdiPresne(leaf, db) {
+    const k = (leaf || '').toLowerCase().trim();
+    if (Object.prototype.hasOwnProperty.call(db, k)) return db[k];
+    const z = dejZakladSlova(k);
+    for (const kd in db) { if (dejZakladSlova(kd) === z) return db[kd]; }
+    return null;
+  }
+  const parseParams = t => (t ? t.split(',').map(s => s.trim()).filter(Boolean) : []);
+  const splitRule = r => { if (!r) return { format: '', example: '' }; const m = r.match(/\s[–—]\s/); if (!m) return { format: r.trim(), example: '' }; const i = r.indexOf(m[0]); return { format: r.slice(0, i).trim(), example: r.slice(i + m[0].length).trim() }; };
+  const leafOf = ct => (ct || '').split('|').pop().trim().toLowerCase();
+
+  const BARVY = ['cern','bil','cerven','modr','zelen','zlut','oranzov','fialov','ruzov','hned','bezov','zlat','stribr','tyrkys','khaki','antracit','bordo','purpur','azur','kremov','smetanov','vinov','grafit','olivov','lososov','koralov','indigov','marengo','petrolej'];
+  const MATERIALY = ['bavln','polyester','kuze','usen','drev','sklo','plast','nerez','kov','guma','silikon','vlna','vlnen','len','lnen','hedvab','keramik','porcelan'];
+  const PRICHUTE = ['kure','hovez','kral','jehnec','kachn','krut','losos','tunak','drubez','telec','zverin','sardin','tresk','kreve','jelen','vepr','pstruh','ryba','rybi','jahod','cokolad','vanilk','banan','orisk','orech','karamel','kokos','malin','boruvk','visn','citron','pomeranc','jablk','hrusk','mango','meloun','brosk','kava','skoric','pistac','ananas','limetk','oreo','tiramis','slany'];
+  const URCENI = ['adult','junior','senior','kitten','puppy','stenat','stene','dospel','detsk','kastrov','steriliz','large breed','small breed'];
+  const KONZISTENCE = ['v zele','ve stav','v omacc','pastik','mousse','pena','krem','prasek','tablet','kapsl','sirup','tekut','granul','susen','koncentrat','pate'];
+  const slovnikHit = (dic, name) => { const f = fold(name); return dic.some(r => r.includes(' ') ? f.includes(r) : new RegExp('\\b' + r).test(f)); };
+  const POCET_UNITS = ['ks','kus\\w*','pack','balen\\w*','tablet\\w*','kapsl\\w*','tobol\\w*','sac\\w*','porc\\w*','dn[ií]','dni','ampul\\w*'];
+  const numUnit = (f, units) => new RegExp('\\b\\d+([.,]\\d+)?\\s?(' + units.join('|') + ')\\b').test(f);
+  const BARVY_EN = ['black','white','blue','red','green','yellow','orange','purple','pink','brown','grey','gray','gold','silver','navy','beige','turquoise','violet','graphite','midnight','starlight'];
+  const BARVY_EN_MULTI = ['space gray','space grey','rose gold','jet black','sky blue'];
+  const jeBarva = f => BARVY.some(r => new RegExp('\\b' + r).test(f)) || /\bsed[aeiy]/.test(f) || /\bsiv/.test(f) || /barevn/.test(f) || /\bpruhledn/.test(f) || /\btransparent/.test(f) || /\bcir[aey]/.test(f)
+    || BARVY_EN.some(r => new RegExp('\\b' + r + '\\b').test(f)) || BARVY_EN_MULTI.some(r => f.includes(r));
+  function jeKod(name) {
+    return name.split(/\s+/).some(t => {
+      const c = t.replace(/[.,;:()]/g, '');
+      if (/^\d{5,}$/.test(c)) return true;
+      const p = (c.match(/[a-zA-Z]/g) || []).length, d = (c.match(/\d/g) || []).length;
+      return p >= 2 && d >= 1 && c.length >= 4;
+    });
+  }
+  function detekujSlozku(slot, name, manufacturer) {
+    const f = fold(name);
+    switch (slot) {
+      case 'objem':    return numUnit(f, ['ml','cl','dl','l','litr\\w*']);
+      case 'hmotnost': return numUnit(f, ['mg','dkg','kg','g','gr','gram\\w*']);
+      case 'rozmer':   return /\d+([.,]\d+)?\s?[x×]\s?\d/.test(f) || numUnit(f, ['mm','cm','m']);
+      case 'barva':    return jeBarva(f);
+      case 'material': return MATERIALY.some(m => new RegExp('\\b' + m).test(f));
+      case 'velikost': return /\b(XXS|XS|S|M|L|XL|XXL|XXXL)\b/.test(name) || /\bvel\.?\s*\w/.test(f);
+      case 'pamet':    return /\b\d+([.,]\d+)?\s?(gb|tb|mb)\b/.test(f);
+      case 'pocet':    return new RegExp('\\b\\d+\\s?(' + POCET_UNITS.join('|') + ')\\b').test(f) || /\b\d+\s?[x×]\s?\d/.test(f);
+      case 'kod':      return jeKod(name);
+      case 'nazev':    return name.trim().length > 0;
+      case 'prichut':     return slovnikHit(PRICHUTE, name);
+      case 'urceni':      return slovnikHit(URCENI, name);
+      case 'konzistence': return slovnikHit(KONZISTENCE, name);
+      case 'znacka':   return manufacturer ? f.includes(fold(manufacturer)) : null;
+      default:         return null;
+    }
+  }
+  function klasifikujSlozku(label) {
+    const f = fold(label);
+    if (f.includes('objem')) return 'objem';
+    if (f.includes('hmotnost') || f.includes('vaha') || f.includes('gramaz')) return 'hmotnost';
+    if (f.includes('rozmer') || f.includes('delka') || f.includes('prumer')) return 'rozmer';
+    if (f.includes('pamet') || f.includes('uloz')) return 'pamet';
+    if (f.includes('velikost')) return 'velikost';
+    if (f.includes('barva') || f.includes('barevn') || f.includes('odstin')) return 'barva';
+    if (f.includes('material')) return 'material';
+    if (f.includes('cislo') || f.includes('kod') || f.includes('oznaceni')) return 'kod';
+    if (f.includes('pocet') || f.includes('mnozstvi')) return 'pocet';
+    if (f.includes('prichut')) return 'prichut';
+    if (f.includes('urceni')) return 'urceni';
+    if (f.includes('konzistenc')) return 'konzistence';
+    if (f.includes('nazev')) return 'nazev';
+    if (f.includes('znacka') || f.includes('vyrobce')) return 'znacka';
+    return null;
+  }
+  function vzorTokeny(format) {
+    return format.split('|').map(t => {
+      t = t.trim();
+      const m = t.match(/^(.*?)\s*\((.*)\)\s*$/);
+      return { label: (m ? m[1] : t).trim(), optional: !!m && /pokud/i.test(m[2]) };
+    }).filter(t => t.label);
+  }
+  function analyzujNazev(ruleFormat, name, manufacturer) {
+    return vzorTokeny(ruleFormat).map(t => {
+      const slot = klasifikujSlozku(t.label);
+      const res = slot ? detekujSlozku(slot, name, manufacturer) : null;
+      let stav = 'rucne';
+      if (res === true) stav = 'je';
+      else if (res === false) stav = t.optional ? 'nepovinne' : 'chybi';
+      return { label: t.label, stav };
+    });
+  }
+  function diagnostikaNazvu(offer, name) {
+    const leaf = leafOf(offer.categoryText);
+    const rule = najdiPresne(leaf, RULES);
+    if (!rule) return null;
+    const format = splitRule(rule).format;
+    const komponenty = analyzujNazev(format, name, offer.manufacturer);
+    return { format, komponenty, chybejici: komponenty.filter(k => k.stav === 'chybi').map(k => k.label) };
+  }
+  function requiredParams(offer) { return parseParams(najdiPresne(leafOf(offer.categoryText), PARAMS)); }
+  function missingRequiredParams(offer) {
+    const required = requiredParams(offer);
+    if (!required.length) return [];
+    const filled = (offer.params || []).map(dejZakladSlova);
+    return required.filter(r => { const rz = dejZakladSlova(r); return !filled.some(f => f === rz || f.includes(rz) || rz.includes(f)); });
+  }
+  const escapeHTML = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  function debounce(fn, delay) { let t; return function (...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), delay); }; }
+
+  /* ============ SDÍLENÁ DATOVÁ SADA ============ */
+  const D = 'https://www.eshop-ukazka.cz';
+  const CAT = {
+    batohy: 'Heureka.cz | Oblečení, obuv a doplňky | Módní doplňky | Batohy, tašky a kabelky | Batohy',
+    sortky: 'Heureka.cz | Oblečení, obuv a doplňky | Pánské oblečení | Pánské kraťasy a šortky',
+    mikiny: 'Heureka.cz | Oblečení, obuv a doplňky | Dětské oblečení | Dětské mikiny a svetry | Dětské mikiny',
+    reproduktory: 'Heureka.cz | Elektronika | TV, audio, video | Reproduktory, soundbary | Bluetooth reproduktory',
+    fotoaparaty: 'Heureka.cz | Elektronika | Foto, kamery, optika | Foto a kamery | Digitální fotoaparáty',
+    cdprehravace: 'Heureka.cz | Elektronika | TV, audio, video | Hi-Fi komponenty | CD přehrávače',
+    kopacky: 'Heureka.cz | Sport a outdoor | Sporty | Míčové sporty | Fotbal | Fotbalová obuv | Pánské kopačky',
+    damsortky: 'Heureka.cz | Oblečení, obuv a doplňky | Dámské oblečení | Dámské šortky',
+    knihy: 'Heureka.cz | Filmy, knihy, hry | Četba | Knihy',
+    kava: 'Heureka.cz | Jídlo a nápoje | Káva a kávové kapsle | Káva | Zrnková káva',
+    powerbanky: 'Heureka.cz | Elektronika | Baterie a nabíjení | Powerbanky',
+  };
+  const ean = seed => String(seed).padStart(13, '0');
+  let uid = 0;
+  const off = (name, categoryText, manufacturer, price, matched, opts = {}) => {
+    uid++;
+    return { id: 'OFR' + String(uid).padStart(3, '0'), name, categoryText, manufacturer, price, ean: ean(880000000000 + uid * 37), matched,
+      matchedName: opts.matchedName || name, matchedUrl: opts.matchedUrl || null, icon: opts.icon || 'fa-box', status: 'pending', params: opts.params || [] };
+  };
+
+  // Aktivní fronta — nabídky, které obchod ještě musí projít.
+  const offers = [
+    off('Mami\'s Caffé Espresso Crema zrnková káva', CAT.kava, "Mami's Caffé", 349, false, { icon: 'fa-mug-hot' }),
+    off('Dakine Pivot batoh zelený 25l', CAT.batohy, 'Dakine', 1290, true, { icon: 'fa-bag-shopping', matchedName: 'Dakine Pivot batoh zelený 25l', matchedUrl: 'https://batohy.heureka.cz/dakine-pivot-batoh-25l/' }),
+    off('Nebbia šortky 343 černá', CAT.sortky, 'Nebbia', 690, false, { icon: 'fa-person' }),
+    off('Niceboy RAZE 3', CAT.reproduktory, 'Niceboy', 890, false, { icon: 'fa-volume-high' }),
+    off('Nikon D3100 Red', CAT.fotoaparaty, 'Nikon', 8990, false, { icon: 'fa-camera' }),
+    off('Denon DCD-520 černý', CAT.cdprehravace, 'Denon', 4290, true, { icon: 'fa-compact-disc', matchedName: 'Denon DCD-520 černý', matchedUrl: 'https://cd-prehravace.heureka.cz/denon-dcd-520/' }),
+    off('Predator X TRX FG', CAT.kopacky, '', 1990, false, { icon: 'fa-futbol' }),
+    off('Nebbia 266 fitness šortky modré M', CAT.damsortky, 'Nebbia', 590, true, { icon: 'fa-person-dress', matchedName: 'Nebbia 266 fitness šortky modré M', matchedUrl: 'https://damske-sortky.heureka.cz/nebbia-266-fitness-sortky/' }),
+    off('Tajemství Julie Garwoodová', CAT.knihy, '', 249, true, { icon: 'fa-book', matchedName: 'Tajemství - Julie Garwoodová (brož.)', matchedUrl: 'https://knihy.heureka.cz/tajemstvi-julie-garwoodova/' }),
+    off('i-Tec PB3400', CAT.powerbanky, 'i-Tec', 590, true, { icon: 'fa-battery-full', matchedName: 'i-Tec PB3400', matchedUrl: 'https://powerbanky.heureka.cz/i-tec-pb3400/' }),
+    off('Alpine Pro Elkini 3 dětská mikina', CAT.mikiny, 'Alpine Pro', 790, false, { icon: 'fa-shirt' }),
+    off('Dakine Pivot batoh 30l', CAT.batohy, 'Dakine', 1390, false, { icon: 'fa-bag-shopping' }),
+    off('GoPro HERO7 Black Edition', CAT.fotoaparaty, 'GoPro', 6490, true, { icon: 'fa-camera', matchedName: 'GoPro HERO7 Black Edition', matchedUrl: 'https://digitalni-fotoaparaty.heureka.cz/gopro-hero7-black/' }),
+    off('JBL Charge 6', CAT.reproduktory, 'JBL', 3290, false, { icon: 'fa-volume-high' }),
+    off('Mokka Brazil zrnková káva 1kg', CAT.kava, 'Mokka', 429, false, { icon: 'fa-mug-hot' }),
+    off('Nike Air šortky', CAT.sortky, 'Nike', 590, false, { icon: 'fa-person' }),
+    off('Anker PowerCore', CAT.powerbanky, 'Anker', 790, false, { icon: 'fa-battery-full' }),
+    off('Predator X TRX FG Black EUR 42', CAT.kopacky, 'Adidas', 2190, true, { icon: 'fa-futbol', matchedName: 'Predator X TRX FG Black/White/Cyan EUR 42', matchedUrl: 'https://panske-kopacky.heureka.cz/adidas-predator-x-trx-fg/' }),
+    off('Roadstar PCD-435CD/RD červená', CAT.cdprehravace, 'Roadstar', 2490, false, { icon: 'fa-compact-disc' }),
+    off('Terry Pratchett Barva kouzel', CAT.knihy, '', 279, true, { icon: 'fa-book', matchedName: 'Barva kouzel - Terry Pratchett (brož.)', matchedUrl: 'https://knihy.heureka.cz/barva-kouzel-terry-pratchett/' }),
+    off('Thule EnRoute batoh černý 23l', '', 'Thule', 1490, false, { icon: 'fa-bag-shopping' }),
+    off('Bezdrátová sluchátka SoundBlast Go', '', '', 990, false, { icon: 'fa-headphones' }),
+    off('Kuchyňský robot ProfiCook MasterChef Edition', 'Heureka.cz | Ostatní', '', 3490, false, { icon: 'fa-blender' }),
+    off('Antivirový software ProGuard roční licence', 'Heureka.cz | Elektronika', '', 590, false, { icon: 'fa-shield-halved' }),
+    off('Dakine Trail batoh šedý 20l', CAT.batohy, 'Dakine', 1590, false, { icon: 'fa-bag-shopping' }),
+    off('Dakine Cross batoh modrý 15l', CAT.batohy, 'Dakine', 1190, false, { icon: 'fa-bag-shopping' }),
+    off('Osprey Daylite batoh zelený 12l', CAT.batohy, 'Osprey', 1690, false, { icon: 'fa-bag-shopping' }),
+  ];
+  const initialSnapshot = {};
+  offers.forEach(o => { initialSnapshot[o.id] = { name: o.name, categoryText: o.categoryText, params: [...o.params] }; });
+
+  // Historicky spárované nabídky (klasická cesta) — už dávno v pořádku; uvedeny s názvem nabídky i s produktovou kartou, na kterou jsou napárované.
+  const historicalPaired = [
+    { id: 'AB1001', name: 'Apple iPhone 16 256GB Vesmírně černá', matchedName: 'Apple iPhone 16 256GB Black', heureka_url: 'https://mobilni-telefony.heureka.cz/apple-iphone-16-256gb/' },
+    { id: 'TVX555', name: 'Samsung QE65S95D OLED 4K Ultra HD Smart televize', matchedName: 'Samsung QE65S95D', heureka_url: 'https://televize.heureka.cz/samsung-qe65s95d/' },
+    { id: 'KNZ007', name: 'J. K. Rowling - Harry Potter a Kámen mudrců', matchedName: 'Harry Potter a Kámen mudrců - J. K. Rowling (váz.)', heureka_url: 'https://knihy.heureka.cz/harry-potter-a-kamen-mudrcu-rowling/' },
+    { id: 'SLCH0Y', name: 'Sony WH-1000XM6 Bezdrátová sluchátka s ANC', matchedName: 'Sony WH-1000XM6', heureka_url: 'https://sluchatka.heureka.cz/sony-wh-1000xm6/' },
+    { id: 'WASH01', name: 'Bosch Serie 8 Pračka WAX32FH0CS 9kg', matchedName: 'Bosch Serie 8 WAX32FH0CS', heureka_url: 'https://pracky.heureka.cz/bosch-serie-8-wax32FH0CS/' },
+    { id: 'BIKE05', name: 'Horské kolo Kellys Gate 90 29" Deore 1x12', matchedName: 'Kellys Gate 90 (2024)', heureka_url: 'https://kola.heureka.cz/kellys-gate-90/' },
+    { id: 'WATCH01', name: 'Garmin Fenix 8 Pro chytré hodinky GPS', matchedName: 'Garmin Fenix 8 Pro', heureka_url: 'https://chytre-hodinky.heureka.cz/garmin-fenix-8-pro/' },
+    { id: 'TOOL07', name: 'DeWALT DCD791P2 Aku vrtačka 18V 2x5.0Ah', matchedName: 'DeWALT DCD791P2 2x5.0Ah', heureka_url: 'https://vrtacky.heureka.cz/dewalt-dcd791p2/' },
+  ];
+
+  // Nabídky čekající na systém (administrátor / spuštění kategorie) — obchod je nemůže sám ovlivnit.
+  const systemWaiting = [
+    { id: 'EKBK01', name: "Elektrokolo 'TrailBlazer 5000XT' dojezd 150km", waitType: 'admin' },
+    { id: 'COFF02', name: "Pákový Kávovar 'AromaMaster Pro G3'", waitType: 'admin' },
+    { id: 'DRON03', name: "Dron s 4K kamerou 'SkyExplorer Mini'", waitType: 'admin' },
+    { id: 'VRSET01', name: "VR Headset 'NovaDream X2'", waitType: 'category' },
+    { id: 'SMHOME02', name: "Chytrý zámek 'SecureLock AI v3'", waitType: 'category' },
+  ];
+
+  const categoryKeyOf = o => o.categoryText ? leafOf(o.categoryText) : '__none__';
+  const capitalize = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  const catShortOf = o => o.categoryText ? o.categoryText.split('|').map(s => s.trim()).slice(-3).join(' | ') : 'kategorie nevyplněná';
+
+  // Typ problému nespárované nabídky.
+  function problemType(o) {
+    if (!o.categoryText || !isValidCategory(o.categoryText)) return 'category';
+    if (o.matched) return 'match-pending';
+    const diag = diagnostikaNazvu(o, editedNames[o.id] ?? o.name);
+    const nameOk = !!diag && diag.chybejici.length === 0;
+    if (nameOk && missingRequiredParams(o).length) return 'params';
+    return 'name';
+  }
+  const PROBLEM_LABELS = {
+    'match-pending': { label: 'Ke spárování', icon: 'fas fa-link' },
+    'category':      { label: 'Chyba v kategorii', icon: 'fas fa-sitemap' },
+    'name':          { label: 'Chyba v názvu', icon: 'fas fa-tag' },
+    'params':        { label: 'Chybějící parametr', icon: 'fas fa-list-alt' },
+  };
+
+  /* ============ STAV APLIKACE (jedna stránka, žádný duplicitní režim) ============ */
+  let activeTab = 'nesparovane'; // 'nesparovane' | 'parovane' | 'cekajici' — zároveň navigace i jediný zdroj počtů
+  let problemFilter = 'all';     // jen pro 'nesparovane'
+  let parovanoFilter = 'all';    // jen pro 'parovane': 'all' | 'classic' | 'simple'
+  let categoryFilter = 'all';
+  let searchQuery = '';
+  let pinnedId = null;
+  const postponed = new Set();
+  const editedNames = {};
+  const editedParams = {};
+  const categorySearch = {};
+  const forceRecat = new Set();
+
+  function counts() {
+    const wfParovano = offers.filter(o => o.status === 'parovano').length;
+    const wfKontrola = offers.filter(o => o.status === 'kontrola').length;
+    const wfPending = offers.filter(o => o.status === 'pending').length;
+    return {
+      parovano: historicalPaired.length + wfParovano,
+      nesparovano: wfPending,
+      cekajici: systemWaiting.length + wfKontrola,
+      total: historicalPaired.length + systemWaiting.length + offers.length,
+    };
+  }
+
+  /* ============ HERO prsten ============ */
+  function renderRing() {
+    const c = counts();
+    const pct = c.total > 0 ? Math.round((c.parovano / c.total) * 100) : 0;
+    const ring = document.getElementById('heroRing');
+    let ringColor = 'var(--danger-color)', text = `Nízká spárovanost (${pct} %) — doporučujeme upravit feed co nejdříve.`;
+    if (pct >= 95) { ringColor = 'var(--success-color)'; text = 'Excelentní! Vaše nabídky mají maximální dosah.'; }
+    else if (pct >= 80) { ringColor = 'var(--status-lightgreen)'; text = 'Skvělá práce, většina nabídek je viditelná.'; }
+    else if (pct >= 50) { ringColor = 'var(--warning-color)'; text = `Slušná spárovanost (${pct} %), ale je tu prostor pro zlepšení.`; }
+    ring.style.background = `conic-gradient(${ringColor} ${pct * 3.6}deg, #e9ecef 0deg)`;
+    ring.title = `${pct} % spárováno. ${text}`;
+    document.getElementById('heroRingText').textContent = pct + ' %';
+  }
+
+  /* ============ HLAVNÍ NAVIGACE = JEDINÉ MÍSTO S POČTY ============ */
+  function renderTabBar() {
+    const c = counts();
+    const tabBar = document.getElementById('tabBar');
+    const TABS = [
+      { id: 'parovane', title: 'Spárované', icon: 'fas fa-check-circle', count: c.parovano },
+      { id: 'nesparovane', title: 'Nespárované', icon: 'fas fa-unlink', count: c.nesparovano },
+      { id: 'cekajici', title: 'Čekající', icon: 'fas fa-user-clock', count: c.cekajici },
+    ];
+    tabBar.innerHTML = TABS.map(t => `<button type="button" class="tab-btn${activeTab === t.id ? ' active' : ''}" data-tab="${t.id}"><i class="${t.icon}"></i>${t.title}<span class="tab-count">${t.count}</span></button>`).join('')
+      + `<span class="tab-total-pill">Celkem: <b>${c.total}</b></span>`;
+    tabBar.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
+      activeTab = btn.getAttribute('data-tab');
+      problemFilter = 'all';
+      parovanoFilter = 'all';
+      searchQuery = '';
+      document.getElementById('offerSearch').value = '';
+      hideToast();
+      renderAll();
+    }));
+  }
+
+  /* ============ TOOLBAR (kategorie + hledání + CSV) ============ */
+  function renderCategoryFilter() {
+    const sel = document.getElementById('categorySelect');
+    sel.style.display = activeTab === 'nesparovane' ? '' : 'none';
+    if (activeTab !== 'nesparovane') return;
+    const cnt = new Map();
+    offers.filter(o => o.status === 'pending').forEach(o => { const k = categoryKeyOf(o); cnt.set(k, (cnt.get(k) || 0) + 1); });
+    const entries = [...cnt.entries()].sort((a, b) => (a[0] === '__none__' ? 1 : b[0] === '__none__' ? -1 : a[0].localeCompare(b[0], 'cs')));
+    const totalPending = offers.filter(o => o.status === 'pending').length;
+    sel.innerHTML = `<option value="all">Všechny kategorie (${totalPending})</option>` +
+      entries.map(([key, count]) => `<option value="${escapeHTML(key)}">${escapeHTML(key === '__none__' ? 'Bez kategorie' : capitalize(key))} (${count})</option>`).join('');
+    sel.value = categoryFilter;
+  }
+
+  function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); }
+  function hideToast() { document.getElementById('toast').classList.remove('show'); }
+
+  document.getElementById('categorySelect').addEventListener('change', e => { categoryFilter = e.target.value; renderContent(); });
+  document.getElementById('offerSearch').addEventListener('input', debounce(e => { searchQuery = e.target.value; renderContent(); }, 200));
+  document.getElementById('csvBtn').addEventListener('click', downloadCurrentCSV);
+
+  function convertToCSV(rows, columns) {
+    const esc = f => { const s = String(f ?? ''); return (s.includes(';') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s; };
+    let csv = columns.map(c => esc(c.header)).join(';') + '\r\n';
+    rows.forEach(r => { csv += columns.map(c => esc(c.csv(r))).join(';') + '\r\n'; });
+    return csv;
+  }
+  function downloadCSV(csvString, filename) {
+    const blob = new Blob([`﻿${csvString}`], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url; link.download = filename; link.style.visibility = 'hidden';
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+  function downloadCurrentCSV() {
+    if (activeTab === 'nesparovane') {
+      const rows = visibleQueue();
+      const columns = [
+        { header: 'ID', csv: o => o.id },
+        { header: 'Název', csv: o => o.name },
+        { header: 'Kategorie', csv: o => leafOf(o.categoryText) },
+        { header: 'Typ problému', csv: o => PROBLEM_LABELS[problemType(o)].label },
+      ];
+      downloadCSV(convertToCSV(rows, columns), 'nesparovane.csv');
+    } else if (activeTab === 'parovane') {
+      const rows = visibleParovanoRows();
+      const columns = [
+        { header: 'ID', csv: r => r.id },
+        { header: 'Název nabídky', csv: r => r.name },
+        { header: 'Napárovaná produktová karta', csv: r => r.fresh ? r.offer.matchedName : r.matchedName },
+        { header: 'Zdroj spárování', csv: r => r.fresh ? 'Simple Pairing' : 'Klasická cesta' },
+      ];
+      downloadCSV(convertToCSV(rows, columns), 'sparovane.csv');
+    } else {
+      const rows = visibleCekajiciRows();
+      const columns = [
+        { header: 'ID', csv: r => r.id },
+        { header: 'Název', csv: r => r.name },
+        { header: 'Typ čekání', csv: r => r.waitType === 'admin' ? 'Čeká na kontrolu administrátorem' : r.waitType === 'category' ? 'Čeká na spuštění kategorie' : 'Odesláno, čeká na ověření' },
+      ];
+      downloadCSV(convertToCSV(rows, columns), 'cekajici.csv');
+    }
+  }
+
+  /* ============ SPÁROVANÉ / ČEKAJÍCÍ — sjednocené řádky ============ */
+  function matchesSearch(name, ean) {
+    if (!searchQuery.trim()) return true;
+    const q = fold(searchQuery);
+    return fold(name).includes(q) || fold(ean || '').includes(q);
+  }
+  function visibleParovanoRows() {
+    const wfPaired = offers.filter(o => o.status === 'parovano').map(o => ({ id: o.id, name: o.name, ean: o.ean, fresh: true, offer: o }));
+    return [...historicalPaired.map(r => ({ ...r, fresh: false })), ...wfPaired].filter(r => matchesSearch(r.name, r.ean));
+  }
+  function visibleCekajiciRows() {
+    const wfWaiting = offers.filter(o => o.status === 'kontrola').map(o => ({ id: o.id, name: o.name, ean: o.ean, waitType: 'own', offer: o }));
+    return [...systemWaiting, ...wfWaiting].filter(r => matchesSearch(r.name, r.ean));
+  }
+  function parovanoRowHTML(r) {
+    const matchedName = r.fresh ? r.offer.matchedName : r.matchedName;
+    const matchedUrl = r.fresh ? r.offer.matchedUrl : r.heureka_url;
+    const matchedHTML = matchedUrl
+      ? `<a href="${matchedUrl}" target="_blank" rel="noopener">${escapeHTML(matchedName)} <i class="fas fa-external-link-alt fa-xs"></i></a>`
+      : escapeHTML(matchedName);
+    const meta = r.fresh ? `${escapeHTML(catShortOf(r.offer))} · EAN: ${r.offer.ean}` : `ID: ${escapeHTML(r.id)}`;
+    const action = r.fresh ? `<button class="btn-link row-action" data-unpair="${r.offer.id}">Zrušit spárování</button>` : '';
+    const price = r.fresh ? `<div class="row-price">${r.offer.price.toLocaleString('cs-CZ')} Kč</div>` : '';
+    return `<div class="list-row">
+      <div class="row-thumb"><i class="fas ${r.fresh ? r.offer.icon : 'fa-box'}"></i></div>
+      <div class="row-split">
+        <div class="row-col">
+          <div class="row-col-label">Nabídka v e-shopu</div>
+          <div class="row-name">${escapeHTML(r.name)}</div>
+          <div class="row-meta">${meta}</div>
+        </div>
+        <div class="row-arrow-mini"><i class="fas fa-arrow-right"></i></div>
+        <div class="row-col">
+          <div class="row-col-label">Produktová karta na Heurece</div>
+          <div class="row-matched-name">${matchedHTML}</div>
+        </div>
+      </div>
+      ${price}
+      ${action}
+    </div>`;
+  }
+  function renderSimpleList(tab) {
+    const content = document.getElementById('content');
+    if (tab === 'parovane') {
+      const rows = visibleParovanoRows();
+      if (!rows.length) {
+        content.innerHTML = `<p class="section-heading">Spárované nabídky</p><div class="empty-list">Žádné nabídky neodpovídají hledání.</div>`;
+        return;
+      }
+      const classic = rows.filter(r => !r.fresh);
+      const simple = rows.filter(r => r.fresh);
+      const showClassic = parovanoFilter !== 'simple';
+      const showSimple = parovanoFilter !== 'classic';
+      const visibleCount = (showClassic ? classic.length : 0) + (showSimple ? simple.length : 0);
+      content.innerHTML = `<p class="section-heading">Spárované nabídky<span class="count-note">(${visibleCount})</span></p>`
+        + (showClassic ? `<p class="subsection-heading"><i class="fas fa-clock-rotate-left"></i> Spárováno klasickou cestou<span class="count-note">(${classic.length})</span></p>`
+          + (classic.length ? classic.map(parovanoRowHTML).join('') : `<div class="empty-list">Žádné nabídky.</div>`) : '')
+        + (showSimple ? `<p class="subsection-heading"><i class="fas fa-wand-magic-sparkles"></i> Spárováno přes Simple Pairing<span class="count-note">(${simple.length})</span></p>`
+          + (simple.length ? simple.map(parovanoRowHTML).join('') : `<div class="empty-list">Zatím žádné nabídky spárované v tomto kole.</div>`) : '');
+      content.querySelectorAll('[data-unpair]').forEach(b => b.addEventListener('click', () => {
+        const o = offers.find(x => x.id === b.dataset.unpair);
+        o.status = 'pending'; postponed.delete(o.id);
+        activeTab = 'nesparovane'; pinnedId = o.id; problemFilter = 'all';
+        hideToast(); renderAll();
+      }));
+      return;
+    }
+
+    const rows = visibleCekajiciRows();
+    if (!rows.length) {
+      content.innerHTML = `<p class="section-heading">Čekající nabídky</p><div class="empty-list">Žádné nabídky neodpovídají hledání.</div>`;
+      return;
+    }
+    const rowsHTML = rows.map(r => {
+      const meta = r.waitType === 'own' ? `${escapeHTML(catShortOf(r.offer))} · EAN: ${r.offer.ean}` : `ID: ${escapeHTML(r.id)}`;
+      const badge = r.waitType === 'admin' ? `<span class="wait-badge admin"><i class="fas fa-user-clock"></i> Čeká na administrátora</span>`
+        : r.waitType === 'category' ? `<span class="wait-badge category"><i class="fas fa-sitemap"></i> Čeká na spuštění kategorie</span>`
+        : `<span class="wait-badge own"><i class="fas fa-paper-plane"></i> Odesláno, čeká na ověření</span>`;
+      const action = r.waitType === 'own' ? `<button class="btn-link row-action" data-reedit="${r.offer.id}">Vrátit k úpravě</button>` : '';
+      const price = r.waitType === 'own' ? `<div class="row-price">${r.offer.price.toLocaleString('cs-CZ')} Kč</div>` : '';
+      return `<div class="list-row"><div class="row-thumb"><i class="fas ${r.waitType === 'own' ? r.offer.icon : 'fa-box'}"></i></div><div class="row-main"><div class="row-name">${escapeHTML(r.name)}</div><div class="row-meta">${meta}</div></div>${price}${badge}${action}</div>`;
+    }).join('');
+    content.innerHTML = `<p class="section-heading">Čekající nabídky<span class="count-note">(${rows.length})</span></p>${rowsHTML}`;
+    content.querySelectorAll('[data-reedit]').forEach(b => b.addEventListener('click', () => {
+      const o = offers.find(x => x.id === b.dataset.reedit);
+      o.status = 'pending'; o.matched = false; postponed.delete(o.id);
+      activeTab = 'nesparovane'; pinnedId = o.id; problemFilter = 'all';
+      hideToast(); renderAll();
+    }));
+  }
+
+  /* ============ NESPÁROVANÉ — karty pod sebou, přímo editovatelné ============ */
+  function applyFilters(list) {
+    let out = list;
+    if (categoryFilter !== 'all') out = out.filter(o => categoryKeyOf(o) === categoryFilter);
+    const q = fold(searchQuery.trim());
+    if (q) out = out.filter(o => fold(o.name).includes(q) || fold(o.ean).includes(q));
+    return out.slice().sort((a, b) => a.name.localeCompare(b.name, 'cs'));
+  }
+  function visibleQueue() {
+    const pending = applyFilters(offers.filter(o => o.status === 'pending'));
+    return problemFilter === 'all' ? pending : pending.filter(o => problemType(o) === problemFilter);
+  }
+  function currentQueue() {
+    const pending = applyFilters(offers.filter(o => o.status === 'pending'));
+    const notPostponed = pending.filter(o => !postponed.has(o.id));
+    const isPostponed = pending.filter(o => postponed.has(o.id));
+    let list = [...notPostponed, ...isPostponed];
+    if (pinnedId) {
+      const idx = list.findIndex(o => o.id === pinnedId);
+      if (idx > 0) { const [p] = list.splice(idx, 1); list.unshift(p); }
+    }
+    return list;
+  }
+
+  function renderProblemFilterBar() {
+    const bar = document.getElementById('problemFilterBar');
+    if (activeTab === 'nesparovane') {
+      const pending = offers.filter(o => o.status === 'pending');
+      const byType = {};
+      pending.forEach(o => { const t = problemType(o); byType[t] = (byType[t] || 0) + 1; });
+      const chip = (key, label, icon, count) => `<button type="button" class="problem-filter-btn${problemFilter === key ? ' active' : ''}" data-filter="${key}">${icon ? `<i class="${icon}"></i>` : ''}${escapeHTML(label)} <span class="count">${count}</span></button>`;
+      bar.innerHTML = chip('all', 'Vše', '', pending.length) + Object.keys(PROBLEM_LABELS).map(key => byType[key] ? chip(key, PROBLEM_LABELS[key].label, PROBLEM_LABELS[key].icon, byType[key]) : '').join('');
+      bar.querySelectorAll('[data-filter]').forEach(b => b.addEventListener('click', () => { problemFilter = b.dataset.filter; renderProblemFilterBar(); renderContent(); }));
+      return;
+    }
+    if (activeTab === 'parovane') {
+      const classicCount = historicalPaired.length;
+      const simpleCount = offers.filter(o => o.status === 'parovano').length;
+      const chip = (key, label, icon, count) => `<button type="button" class="problem-filter-btn${parovanoFilter === key ? ' active' : ''}" data-parovano-filter="${key}"><i class="${icon}"></i>${escapeHTML(label)} <span class="count">${count}</span></button>`;
+      bar.innerHTML = chip('all', 'Vše', 'fas fa-layer-group', classicCount + simpleCount)
+        + chip('classic', 'Klasická cesta', 'fas fa-clock-rotate-left', classicCount)
+        + chip('simple', 'Simple Pairing', 'fas fa-wand-magic-sparkles', simpleCount);
+      bar.querySelectorAll('[data-parovano-filter]').forEach(b => b.addEventListener('click', () => { parovanoFilter = b.dataset.parovanoFilter; renderProblemFilterBar(); renderContent(); }));
+      return;
+    }
+    bar.innerHTML = '';
+  }
+
+  function chipHTML(k) {
+    if (k.stav === 'je') return `<span class="chip ok">✓ ${escapeHTML(k.label)}</span>`;
+    if (k.stav === 'chybi') return `<span class="chip missing">✗ ${escapeHTML(k.label)}</span>`;
+    if (k.stav === 'nepovinne') return `<span class="chip ok">○ ${escapeHTML(k.label)}</span>`;
+    return `<span class="chip manual">? ${escapeHTML(k.label)}</span>`;
+  }
+  function diagBlockHTML(offer, name) {
+    const diag = diagnostikaNazvu(offer, name);
+    if (!diag) return `<div class="rule-hint">Pro tuto kategorii nemáme uložený vzor názvu — ověřte ručně.</div>`;
+    const chybi = diag.chybejici;
+    return `<div class="rule-hint">Vzor pro „${escapeHTML(leafOf(offer.categoryText))}“: ${escapeHTML(diag.format)}</div>
+      <div class="chip-row">${diag.komponenty.map(chipHTML).join('')}</div>
+      ${!chybi.length ? `<div class="all-good"><i class="fas fa-circle-check"></i> Podle vzoru kategorie už nic nechybí</div>` : ''}`;
+  }
+  function categoryResultsHTML(query) {
+    const q = fold(query.trim());
+    if (!q) return `<div class="cat-empty">Začněte psát název koncové kategorie (např. „batohy“, „sluchátka“…).</div>`;
+    const matches = CATEGORY_OPTIONS.filter(c => c.foldedLeaf.includes(q)).slice(0, 30);
+    if (!matches.length) return `<div class="cat-empty">Žádná kategorie neodpovídá hledání.</div>`;
+    return matches.map(c => `
+      <div class="cat-option" data-full="${escapeHTML(c.full)}">
+        <span class="cat-leaf">${escapeHTML(c.leaf)}</span>
+        ${c.parent ? `<span class="cat-parent">${escapeHTML(c.parent)}</span>` : ''}
+      </div>`).join('');
+  }
+  function categoryPickerHTML(offer) {
+    const q = categorySearch[offer.id] ?? '';
+    const hasInvalid = offer.categoryText && !isValidCategory(offer.categoryText);
+    const label = hasInvalid
+      ? 'Zaslaná kategorie neodpovídá žádné konkrétní kategorii na Heurece — vyberte prosím správnou koncovou kategorii:'
+      : 'Tato nabídka nemá přiřazenou kategorii — vyberte koncovou kategorii z nabídky Heureky:';
+    return `
+      <div class="category-picker">
+        ${hasInvalid ? `<div class="cat-invalid-note">Zaslaná kategorie: <strong>${escapeHTML(offer.categoryText)}</strong></div>` : ''}
+        <label>${label}</label>
+        <input type="text" id="categoryInput-${offer.id}" placeholder="Hledat koncovou kategorii…" value="${escapeHTML(q)}" autocomplete="off">
+        <div class="category-results" id="categoryResults-${offer.id}">${categoryResultsHTML(q)}</div>
+      </div>`;
+  }
+  function paramsFormHTML(o) {
+    const leaf = leafOf(o.categoryText);
+    const missing = missingRequiredParams(o);
+    const vals = editedParams[o.id] || {};
+    return `
+      <div class="params-editor">
+        <label>Vyplňte chybějící povinné parametry pro kategorii „${escapeHTML(leaf)}“:</label>
+        ${missing.map(p => `
+          <div class="param-row${vals[p] ? ' filled' : ''}" data-param-row="${escapeHTML(p)}">
+            <span class="param-label">${escapeHTML(p)}</span>
+            <input type="text" data-param-input="${escapeHTML(p)}" placeholder="Zadejte hodnotu…" value="${escapeHTML(vals[p] || '')}">
+            <i class="fas fa-circle-check param-check"></i>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  function renderOfferCardHTML(o) {
+    const catShort = o.categoryText ? o.categoryText.split('|').map(s => s.trim()).slice(-3).join(' | ') : '';
+    const currentName = editedNames[o.id] ?? o.name;
+    const needsCategory = !o.categoryText || !isValidCategory(o.categoryText) || forceRecat.has(o.id);
+    const invalidCategory = o.categoryText && !isValidCategory(o.categoryText);
+    const nameDiag = !needsCategory ? diagnostikaNazvu(o, currentName) : null;
+    const nameOk = !!nameDiag && nameDiag.chybejici.length === 0;
+    const needsParams = !o.matched && !needsCategory && nameOk && missingRequiredParams(o).length > 0;
+
+    let rightHTML = '', actionsHTML = '';
+    const sockSvg = `
+          <svg class="sock-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 6h10v20c0 4 2 7 5 10l6 7c2 3 1 8-3 9H24c-4 0-7-3-7-7V13c0-4 1-7 3-7z" stroke="#17a2c4" stroke-width="2.5" fill="#eaf7fb"/>
+            <path d="M31 26h9" stroke="#17a2c4" stroke-width="2"/>
+            <path d="M34 10h10v20c0 4 2 7 5 10l3 4c2 3 1 8-3 9H38c-4 0-7-3-7-7V17c0-4 1-7 3-7z" stroke="#0b3d91" stroke-width="2.5" fill="#eaeefc"/>
+            <circle cx="47" cy="12" r="7" fill="#0072ce"/>
+            <text x="47" y="16" font-size="10" font-weight="700" fill="#fff" text-anchor="middle" font-family="system-ui">?</text>
+          </svg>`;
+
+    if (o.matched) {
+      rightHTML = `
+        <div class="status-box is-matched">
+          <div class="matched-head"><i class="fas fa-circle-check"></i> Nalezena shoda podle EAN</div>
+          <div class="matched-name">${escapeHTML(o.matchedName)}</div>
+          <div class="matched-cat">${escapeHTML(catShort)}</div>
+        </div>`;
+      actionsHTML = `<button class="btn-primary" data-act="confirm">Potvrdit spárování</button><button class="btn-link" data-act="notmatch">Není to shoda</button>`;
+    } else if (needsCategory) {
+      rightHTML = `
+        <div class="status-box">
+          ${sockSvg}
+          <div class="empty-text">${invalidCategory ? 'Zaslaná kategorie je příliš obecná / nedostatečná a je potřeba ji upravit.' : 'Bez přiřazené kategorie nabídku nejde spárovat ani zkontrolovat vzor jejího názvu.'}</div>
+          ${categoryPickerHTML(o)}
+        </div>`;
+      actionsHTML = `<button class="btn-link" data-act="postpone">Odložit</button>`;
+    } else if (needsParams) {
+      rightHTML = `
+        <div class="status-box">
+          ${sockSvg}
+          <div class="empty-text">Název i kategorie jsou v pořádku, ale pro spárování ještě chybí povinné parametry.</div>
+          ${paramsFormHTML(o)}
+        </div>`;
+      actionsHTML = `<button class="btn-primary" data-act="submit-params">Odeslat ke kontrole</button><button class="btn-link" data-act="postpone">Odložit</button>`;
+    } else {
+      rightHTML = `
+        <div class="status-box">
+          ${sockSvg}
+          <div class="empty-text">Nepodařilo se nám najít odpovídající produkt pro párování na Heurece.</div>
+          <div class="name-editor">
+            <label>Upravte název nabídky podle toho, co pro tuto kategorii chybí:</label>
+            <input type="text" id="nameInput-${o.id}" value="${escapeHTML(currentName)}">
+            <div id="diagBlock-${o.id}">${diagBlockHTML(o, currentName)}</div>
+            <button type="button" class="btn-secondary-link" data-act="recat">Kategorii doplnil někdo špatně? Změnit kategorii</button>
+          </div>
+        </div>`;
+      actionsHTML = `<button class="btn-primary" data-act="submit">Odeslat ke kontrole</button><button class="btn-link" data-act="postpone">Odložit</button>`;
+    }
+
+    return `
+      <div class="match-row${pinnedId === o.id ? ' pinned-highlight' : ''}" data-oid="${o.id}">
+        <div class="offer-card">
+          <div class="offer-thumb"><i class="fas ${o.icon}"></i></div>
+          <div class="offer-name">${escapeHTML(o.name)}</div>
+          <div class="offer-meta">Kategorie: ${catShort ? escapeHTML(catShort) : '<span class="cat-missing-inline">nevyplněná</span>'}</div>
+          <div class="offer-meta">EAN: ${o.ean}</div>
+          <div class="offer-price">${o.price.toLocaleString('cs-CZ')} Kč</div>
+        </div>
+        <div class="arrow-col"><i class="fas fa-arrow-right"></i></div>
+        ${rightHTML}
+        <div class="actions-col">${actionsHTML}</div>
+      </div>`;
+  }
+
+  function wireOfferCard(o, cardEl) {
+    const needsCategory = !o.categoryText || !isValidCategory(o.categoryText) || forceRecat.has(o.id);
+    const currentName = editedNames[o.id] ?? o.name;
+    const nameDiag = !needsCategory ? diagnostikaNazvu(o, currentName) : null;
+    const nameOk = !!nameDiag && nameDiag.chybejici.length === 0;
+    const needsParams = !o.matched && !needsCategory && nameOk && missingRequiredParams(o).length > 0;
+
+    if (o.matched) {
+      cardEl.querySelector('[data-act="confirm"]').addEventListener('click', () => {
+        o.status = 'parovano'; postponed.delete(o.id);
+        if (pinnedId === o.id) pinnedId = null;
+        showToast(`✓ „${o.name}“ bylo spárováno.`);
+        renderAll();
+      });
+      cardEl.querySelector('[data-act="notmatch"]').addEventListener('click', () => { o.matched = false; hideToast(); renderAll(); });
+    } else if (needsCategory) {
+      const catInput = cardEl.querySelector(`#categoryInput-${o.id}`);
+      catInput.addEventListener('input', () => {
+        categorySearch[o.id] = catInput.value;
+        cardEl.querySelector(`#categoryResults-${o.id}`).innerHTML = categoryResultsHTML(catInput.value);
+      });
+      cardEl.querySelector(`#categoryResults-${o.id}`).addEventListener('click', e => {
+        const opt = e.target.closest('.cat-option');
+        if (!opt) return;
+        o.categoryText = opt.dataset.full;
+        forceRecat.delete(o.id);
+        delete categorySearch[o.id];
+        hideToast(); renderAll();
+      });
+      cardEl.querySelector('[data-act="postpone"]').addEventListener('click', () => {
+        postponed.add(o.id);
+        if (pinnedId === o.id) pinnedId = null;
+        hideToast(); renderAll();
+      });
+    } else if (needsParams) {
+      cardEl.querySelectorAll('[data-param-input]').forEach(input => {
+        const p = input.dataset.paramInput;
+        input.addEventListener('input', () => {
+          if (!editedParams[o.id]) editedParams[o.id] = {};
+          editedParams[o.id][p] = input.value;
+          input.closest('.param-row').classList.toggle('filled', !!input.value.trim());
+        });
+      });
+      cardEl.querySelector('[data-act="submit-params"]').addEventListener('click', () => {
+        const vals = editedParams[o.id] || {};
+        const newParams = Object.keys(vals).filter(p => vals[p] && vals[p].trim());
+        o.params = [...(o.params || []), ...newParams];
+        o.status = 'kontrola'; postponed.delete(o.id);
+        if (pinnedId === o.id) pinnedId = null;
+        showToast(`✓ „${o.name}“ odesláno ke kontrole.`);
+        renderAll();
+      });
+      cardEl.querySelector('[data-act="postpone"]').addEventListener('click', () => {
+        postponed.add(o.id);
+        if (pinnedId === o.id) pinnedId = null;
+        hideToast(); renderAll();
+      });
+    } else {
+      const input = cardEl.querySelector(`#nameInput-${o.id}`);
+      input.addEventListener('input', () => {
+        editedNames[o.id] = input.value;
+        cardEl.querySelector(`#diagBlock-${o.id}`).innerHTML = diagBlockHTML(o, input.value);
+      });
+      cardEl.querySelector('[data-act="submit"]').addEventListener('click', () => {
+        o.name = editedNames[o.id] ?? o.name;
+        o.status = 'kontrola'; postponed.delete(o.id);
+        if (pinnedId === o.id) pinnedId = null;
+        showToast(`✓ „${o.name}“ odesláno ke kontrole.`);
+        renderAll();
+      });
+      cardEl.querySelector('[data-act="postpone"]').addEventListener('click', () => {
+        postponed.add(o.id);
+        if (pinnedId === o.id) pinnedId = null;
+        hideToast(); renderAll();
+      });
+      cardEl.querySelector('[data-act="recat"]').addEventListener('click', () => { forceRecat.add(o.id); renderAll(); });
+    }
+  }
+
+  function renderNesparovano() {
+    const content = document.getElementById('content');
+    let queue = currentQueue();
+    const filtered = problemFilter === 'all' ? queue : queue.filter(o => problemType(o) === problemFilter);
+
+    if (!queue.length) {
+      const wf = { parovano: offers.filter(o => o.status === 'parovano').length, kontrola: offers.filter(o => o.status === 'kontrola').length, total: offers.length };
+      content.innerHTML = `
+        <div class="done-panel">
+          <i class="fas fa-circle-check"></i>
+          <h2>Všechny nabídky zpracované</h2>
+          <p>Spárováno v tomto kole: ${wf.parovano} · Odesláno ke kontrole: ${wf.kontrola} z celkem ${wf.total} nabídek.</p>
+          <button class="btn-primary" style="width:auto;" id="resetBtn">Začít znovu</button>
+        </div>`;
+      document.getElementById('resetBtn').addEventListener('click', () => {
+        offers.forEach(o => {
+          o.status = 'pending';
+          const snap = initialSnapshot[o.id];
+          if (snap) { o.name = snap.name; o.categoryText = snap.categoryText; o.params = [...snap.params]; }
+        });
+        postponed.clear(); forceRecat.clear();
+        Object.keys(editedNames).forEach(k => delete editedNames[k]);
+        Object.keys(categorySearch).forEach(k => delete categorySearch[k]);
+        Object.keys(editedParams).forEach(k => delete editedParams[k]);
+        pinnedId = null; problemFilter = 'all';
+        categoryFilter = 'all'; searchQuery = '';
+        document.getElementById('offerSearch').value = '';
+        hideToast(); renderAll();
+      });
+      return;
+    }
+
+    content.innerHTML = `<p class="section-heading">Nespárované nabídky<span class="count-note">(${filtered.length})</span></p>`
+      + (filtered.length ? filtered.map(renderOfferCardHTML).join('') : `<div class="empty-list">Žádné nabídky neodpovídají zvolenému filtru.</div>`);
+    filtered.forEach(o => {
+      const cardEl = content.querySelector(`.match-row[data-oid="${o.id}"]`);
+      if (cardEl) wireOfferCard(o, cardEl);
+    });
+    if (pinnedId) {
+      const pinnedEl = content.querySelector(`.match-row[data-oid="${pinnedId}"]`);
+      if (pinnedEl) pinnedEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+
+  /* ============ SPOLEČNÝ RENDER ============ */
+  function renderContent() {
+    if (activeTab === 'nesparovane') renderNesparovano();
+    else renderSimpleList(activeTab);
+  }
+  function renderAll() {
+    renderRing();
+    renderTabBar();
+    renderCategoryFilter();
+    renderProblemFilterBar();
+    renderContent();
+  }
+
+  /* ============ INIT ============ */
+  try {
+    renderAll();
+  } catch (e) {
+    console.error('Chyba při inicializaci stránky:', e);
+  }
+});
+</script>
+</body>
+</html>
