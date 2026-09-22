@@ -149,6 +149,17 @@
   .subsection-heading { font-size: 13.5px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .03em; margin: 22px 0 12px; }
   .subsection-heading:first-child { margin-top: 0; }
   .subsection-heading .count-note { text-transform: none; font-weight: 400; letter-spacing: normal; margin-left: 4px; }
+
+  /* ---- Stránkování ---- */
+  .pagination { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 18px 0 8px; }
+  .pg-btn {
+    width: 36px; height: 36px; border-radius: var(--radius-pill); border: 1px solid var(--border-color); background: var(--background-card);
+    color: var(--text-dark); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; transition: all .15s ease;
+  }
+  .pg-btn:hover:not(:disabled) { border-color: var(--primary-blue); color: var(--primary-blue); }
+  .pg-btn:active:not(:disabled) { transform: scale(.94); }
+  .pg-btn:disabled { opacity: .35; cursor: default; }
+  .pg-info { font-size: 13px; color: var(--text-secondary); font-weight: 600; min-width: 100px; text-align: center; }
   .list-row .row-price { font-weight: 700; font-size: 14.5px; flex: 0 0 90px; text-align: right; }
   .list-row .row-badge { flex: 0 0 auto; font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-xs); white-space: nowrap; }
   .row-badge.matched { background: var(--success-soft); color: #12805c; }
@@ -531,11 +542,45 @@ document.addEventListener('DOMContentLoaded', async () => {
   let categoryFilter = 'all';
   let searchQuery = '';
   let pinnedId = null;
+  const PAGE_SIZE = 10;
+  let nesparovanoPage = 1;
+  let parovanoClassicPage = 1;
+  let parovanoSimplePage = 1;
+  let cekajiciPage = 1;
   const postponed = new Set();
   const editedNames = {};
   const editedParams = {};
   const categorySearch = {};
   const forceRecat = new Set();
+
+  /* ============ STRÁNKOVÁNÍ (10 nabídek na stránku) ============ */
+  function paginate(list, page) {
+    const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+    const p = Math.min(Math.max(1, page), totalPages);
+    return { items: list.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE), page: p, totalPages };
+  }
+  function paginationHTML(page, totalPages, key) {
+    if (totalPages <= 1) return '';
+    return `<div class="pagination" data-pg-key="${key}">
+      <button type="button" class="pg-btn" data-pg="prev"${page <= 1 ? ' disabled' : ''} aria-label="Předchozí stránka"><i class="fas fa-chevron-left"></i></button>
+      <span class="pg-info">Stránka ${page} z ${totalPages}</span>
+      <button type="button" class="pg-btn" data-pg="next"${page >= totalPages ? ' disabled' : ''} aria-label="Další stránka"><i class="fas fa-chevron-right"></i></button>
+    </div>`;
+  }
+  function wirePagination(container) {
+    container.querySelectorAll('[data-pg-key]').forEach(el => {
+      const key = el.dataset.pgKey;
+      el.querySelectorAll('[data-pg]').forEach(btn => btn.addEventListener('click', () => {
+        const delta = btn.dataset.pg === 'next' ? 1 : -1;
+        if (key === 'nesparovane') nesparovanoPage += delta;
+        else if (key === 'cekajici') cekajiciPage += delta;
+        else if (key === 'parovano-classic') parovanoClassicPage += delta;
+        else if (key === 'parovano-simple') parovanoSimplePage += delta;
+        renderContent();
+        document.getElementById('content').scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }));
+    });
+  }
 
   function counts() {
     const wfParovano = offers.filter(o => o.status === 'parovano').length;
@@ -579,6 +624,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       problemFilter = 'all';
       parovanoFilter = 'all';
       searchQuery = '';
+      nesparovanoPage = 1; parovanoClassicPage = 1; parovanoSimplePage = 1; cekajiciPage = 1;
       document.getElementById('offerSearch').value = '';
       hideToast();
       renderAll();
@@ -602,8 +648,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); }
   function hideToast() { document.getElementById('toast').classList.remove('show'); }
 
-  document.getElementById('categorySelect').addEventListener('change', e => { categoryFilter = e.target.value; renderContent(); });
-  document.getElementById('offerSearch').addEventListener('input', debounce(e => { searchQuery = e.target.value; renderContent(); }, 200));
+  document.getElementById('categorySelect').addEventListener('change', e => { categoryFilter = e.target.value; nesparovanoPage = 1; renderContent(); });
+  document.getElementById('offerSearch').addEventListener('input', debounce(e => {
+    searchQuery = e.target.value;
+    nesparovanoPage = 1; parovanoClassicPage = 1; parovanoSimplePage = 1; cekajiciPage = 1;
+    renderContent();
+  }, 200));
   document.getElementById('csvBtn').addEventListener('click', downloadCurrentCSV);
 
   function convertToCSV(rows, columns) {
@@ -704,17 +754,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       const showClassic = parovanoFilter !== 'simple';
       const showSimple = parovanoFilter !== 'classic';
       const visibleCount = (showClassic ? classic.length : 0) + (showSimple ? simple.length : 0);
+      const classicPg = paginate(classic, parovanoClassicPage);
+      const simplePg = paginate(simple, parovanoSimplePage);
+      parovanoClassicPage = classicPg.page; parovanoSimplePage = simplePg.page;
       content.innerHTML = `<p class="section-heading">Spárované nabídky<span class="count-note">(${visibleCount})</span></p>`
         + (showClassic ? `<p class="subsection-heading"><i class="fas fa-clock-rotate-left"></i> Spárováno klasickou cestou<span class="count-note">(${classic.length})</span></p>`
-          + (classic.length ? classic.map(parovanoRowHTML).join('') : `<div class="empty-list">Žádné nabídky.</div>`) : '')
+          + (classicPg.items.length ? classicPg.items.map(parovanoRowHTML).join('') : `<div class="empty-list">Žádné nabídky.</div>`)
+          + paginationHTML(classicPg.page, classicPg.totalPages, 'parovano-classic') : '')
         + (showSimple ? `<p class="subsection-heading"><i class="fas fa-wand-magic-sparkles"></i> Spárováno přes Simple Pairing<span class="count-note">(${simple.length})</span></p>`
-          + (simple.length ? simple.map(parovanoRowHTML).join('') : `<div class="empty-list">Zatím žádné nabídky spárované v tomto kole.</div>`) : '');
+          + (simplePg.items.length ? simplePg.items.map(parovanoRowHTML).join('') : `<div class="empty-list">Zatím žádné nabídky spárované v tomto kole.</div>`)
+          + paginationHTML(simplePg.page, simplePg.totalPages, 'parovano-simple') : '');
       content.querySelectorAll('[data-unpair]').forEach(b => b.addEventListener('click', () => {
         const o = offers.find(x => x.id === b.dataset.unpair);
         o.status = 'pending'; postponed.delete(o.id);
-        activeTab = 'nesparovane'; pinnedId = o.id; problemFilter = 'all';
+        activeTab = 'nesparovane'; pinnedId = o.id; problemFilter = 'all'; nesparovanoPage = 1;
         hideToast(); renderAll();
       }));
+      wirePagination(content);
       return;
     }
 
@@ -723,7 +779,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       content.innerHTML = `<p class="section-heading">Čekající nabídky</p><div class="empty-list">Žádné nabídky neodpovídají hledání.</div>`;
       return;
     }
-    const rowsHTML = rows.map(r => {
+    const cekajiciPg = paginate(rows, cekajiciPage);
+    cekajiciPage = cekajiciPg.page;
+    const rowsHTML = cekajiciPg.items.map(r => {
       const meta = r.waitType === 'own' ? `${escapeHTML(catShortOf(r.offer))} · EAN: ${r.offer.ean}` : `ID: ${escapeHTML(r.id)}`;
       const badge = r.waitType === 'admin' ? `<span class="wait-badge admin"><i class="fas fa-user-clock"></i> Čeká na administrátora</span>`
         : r.waitType === 'category' ? `<span class="wait-badge category"><i class="fas fa-sitemap"></i> Čeká na spuštění kategorie</span>`
@@ -732,13 +790,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       const price = r.waitType === 'own' ? `<div class="row-price">${r.offer.price.toLocaleString('cs-CZ')} Kč</div>` : '';
       return `<div class="list-row"><div class="row-thumb"><i class="fas ${r.waitType === 'own' ? r.offer.icon : 'fa-box'}"></i></div><div class="row-main"><div class="row-name">${escapeHTML(r.name)}</div><div class="row-meta">${meta}</div></div>${price}${badge}${action}</div>`;
     }).join('');
-    content.innerHTML = `<p class="section-heading">Čekající nabídky<span class="count-note">(${rows.length})</span></p>${rowsHTML}`;
+    content.innerHTML = `<p class="section-heading">Čekající nabídky<span class="count-note">(${rows.length})</span></p>${rowsHTML}${paginationHTML(cekajiciPg.page, cekajiciPg.totalPages, 'cekajici')}`;
     content.querySelectorAll('[data-reedit]').forEach(b => b.addEventListener('click', () => {
       const o = offers.find(x => x.id === b.dataset.reedit);
       o.status = 'pending'; o.matched = false; postponed.delete(o.id);
-      activeTab = 'nesparovane'; pinnedId = o.id; problemFilter = 'all';
+      activeTab = 'nesparovane'; pinnedId = o.id; problemFilter = 'all'; nesparovanoPage = 1;
       hideToast(); renderAll();
     }));
+    wirePagination(content);
   }
 
   /* ============ NESPÁROVANÉ — karty pod sebou, přímo editovatelné ============ */
@@ -773,7 +832,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       pending.forEach(o => { const t = problemType(o); byType[t] = (byType[t] || 0) + 1; });
       const chip = (key, label, icon, count) => `<button type="button" class="problem-filter-btn${problemFilter === key ? ' active' : ''}" data-filter="${key}">${icon ? `<i class="${icon}"></i>` : ''}${escapeHTML(label)} <span class="count">${count}</span></button>`;
       bar.innerHTML = chip('all', 'Vše', '', pending.length) + Object.keys(PROBLEM_LABELS).map(key => byType[key] ? chip(key, PROBLEM_LABELS[key].label, PROBLEM_LABELS[key].icon, byType[key]) : '').join('');
-      bar.querySelectorAll('[data-filter]').forEach(b => b.addEventListener('click', () => { problemFilter = b.dataset.filter; renderProblemFilterBar(); renderContent(); }));
+      bar.querySelectorAll('[data-filter]').forEach(b => b.addEventListener('click', () => { problemFilter = b.dataset.filter; nesparovanoPage = 1; renderProblemFilterBar(); renderContent(); }));
       return;
     }
     if (activeTab === 'parovane') {
@@ -783,7 +842,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       bar.innerHTML = chip('all', 'Vše', 'fas fa-layer-group', classicCount + simpleCount)
         + chip('classic', 'Klasická cesta', 'fas fa-clock-rotate-left', classicCount)
         + chip('simple', 'Simple Pairing', 'fas fa-wand-magic-sparkles', simpleCount);
-      bar.querySelectorAll('[data-parovano-filter]').forEach(b => b.addEventListener('click', () => { parovanoFilter = b.dataset.parovanoFilter; renderProblemFilterBar(); renderContent(); }));
+      bar.querySelectorAll('[data-parovano-filter]').forEach(b => b.addEventListener('click', () => { parovanoFilter = b.dataset.parovanoFilter; parovanoClassicPage = 1; parovanoSimplePage = 1; renderProblemFilterBar(); renderContent(); }));
       return;
     }
     bar.innerHTML = '';
@@ -1020,7 +1079,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         Object.keys(editedNames).forEach(k => delete editedNames[k]);
         Object.keys(categorySearch).forEach(k => delete categorySearch[k]);
         Object.keys(editedParams).forEach(k => delete editedParams[k]);
-        pinnedId = null; problemFilter = 'all';
+        pinnedId = null; problemFilter = 'all'; nesparovanoPage = 1;
         categoryFilter = 'all'; searchQuery = '';
         document.getElementById('offerSearch').value = '';
         hideToast(); renderAll();
@@ -1028,12 +1087,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    if (pinnedId) {
+      const pinnedIdx = filtered.findIndex(o => o.id === pinnedId);
+      if (pinnedIdx >= 0) nesparovanoPage = Math.floor(pinnedIdx / PAGE_SIZE) + 1;
+    }
+    const { items: pageItems, page, totalPages } = paginate(filtered, nesparovanoPage);
+    nesparovanoPage = page;
+
     content.innerHTML = `<p class="section-heading">Nespárované nabídky<span class="count-note">(${filtered.length})</span></p>`
-      + (filtered.length ? filtered.map(renderOfferCardHTML).join('') : `<div class="empty-list">Žádné nabídky neodpovídají zvolenému filtru.</div>`);
-    filtered.forEach(o => {
+      + (pageItems.length ? pageItems.map(renderOfferCardHTML).join('') : `<div class="empty-list">Žádné nabídky neodpovídají zvolenému filtru.</div>`)
+      + paginationHTML(page, totalPages, 'nesparovane');
+    pageItems.forEach(o => {
       const cardEl = content.querySelector(`.match-row[data-oid="${o.id}"]`);
       if (cardEl) wireOfferCard(o, cardEl);
     });
+    wirePagination(content);
     if (pinnedId) {
       const pinnedEl = content.querySelector(`.match-row[data-oid="${pinnedId}"]`);
       if (pinnedEl) pinnedEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
