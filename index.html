@@ -55,9 +55,12 @@
   .page-header { font-size: 26px; font-weight: 700; margin: 0 0 6px; letter-spacing: -.01em; }
   .page-lede { color: var(--text-secondary); max-width: 620px; margin: 0; font-size: 14px; }
 
-  .hero-ring { position: relative; width: 180px; height: 180px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; justify-self: center; transition: background .6s ease; }
+  .hero-ring-group { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; justify-self: center; align-self: center; }
+  .hero-ring { position: relative; width: 180px; height: 180px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background .6s ease; }
   .hero-ring::before { content: ""; position: absolute; inset: 16px; background: var(--background-card); border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.04); }
   .hero-ring span { position: relative; z-index: 1; font-weight: 800; font-size: 36px; }
+  .hero-ring-caption { font-size: 13.5px; color: var(--text-secondary); font-weight: 500; white-space: nowrap; }
+  .hero-ring-caption strong { color: var(--text-dark); font-weight: 700; }
 
   /* ---- Jediná navigace = zároveň statistiky (žádná duplicita) ---- */
   .tab-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; position: relative; z-index: 1; }
@@ -285,7 +288,10 @@
         <h1 class="page-header">Centrum spárovanosti</h1>
         <p class="page-lede">Nabídky rovnou vidíte pod sebou a upravujete na místě — bez tabulek a bez přepínání mezi nástroji.</p>
       </div>
-      <div class="hero-ring" id="heroRing"><span id="heroRingText">0%</span></div>
+      <div class="hero-ring-group">
+        <div class="hero-ring" id="heroRing"><span id="heroRingText">0%</span></div>
+        <div class="hero-ring-caption" id="heroRingCaption">0 z 0 nabídek</div>
+      </div>
     </div>
     <div class="tab-bar" id="tabBar"></div>
   </header>
@@ -606,6 +612,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ring.style.background = `conic-gradient(${ringColor} ${pct * 3.6}deg, #e9ecef 0deg)`;
     ring.title = `${pct} % spárováno. ${text}`;
     document.getElementById('heroRingText').textContent = pct + ' %';
+    document.getElementById('heroRingCaption').innerHTML = `<strong>${c.parovano}</strong> z ${c.total} nabídek spárováno`;
   }
 
   /* ============ HLAVNÍ NAVIGACE = JEDINÉ MÍSTO S POČTY ============ */
